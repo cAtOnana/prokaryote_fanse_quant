@@ -146,7 +146,7 @@ void fill_rc(string fanse3, vector<reflat>& line)
 		if (line[mid].gname== id)
 			line[mid].readcount += 1;
 		else if
-	}
+	}1
 }
 
 
