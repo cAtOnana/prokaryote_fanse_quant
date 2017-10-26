@@ -3,3 +3,7 @@
 ################################################################################
 
 /Debug
+/prokaryote_fanse_quant/Release
+/prokaryote_fanse_quant/Debug
+/.vs
+/prokaryote_fanse_quant.sdf
