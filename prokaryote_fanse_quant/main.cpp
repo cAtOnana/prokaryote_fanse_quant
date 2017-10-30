@@ -10,15 +10,15 @@ const double million = 1000000;
 
 struct reflat
 {
-	string gname;
-	string gid;
-	string gtype;
-	int Start;
-	int End;
+	string gname = "";
+	string gid = "";
+	string gtype = "";
+	int Start = 0;
+	int End = 0;
 	double length = 0;
 	int readcount = 0;
 	double rpkm = 0.0;
-	char strand;
+	char strand = '.';
 };
 bool cmp_Start(const reflat &a, const reflat&b)
 {
@@ -26,30 +26,39 @@ bool cmp_Start(const reflat &a, const reflat&b)
 }
 
 void read_reflat(string fname, vector<reflat>& line);
-void fill_rc(string fanse3, vector<reflat>& line);
+int fill_rc(string fanse3, vector<reflat>& line,ofstream& log);
 
 
-int main(int agvc, char *agvr[])//将mian（）改造成接受命令行参数的形式，两个参数，第一个为reflat文件地址，第二个为fanse3文件地址
+int main()//int agvc, char *agvr[])//将mian（）改造成接受命令行参数的形式，两个参数，第一个为reflat文件地址，第二个为fanse3文件地址
 {
-	string arga =agvr[1];
-	string argb = agvr[2];
-	if (agvc != 3)
+	string gff = "GCF_000005845.2_ASM584v2_genomic.gff";//agvr[1];
+	string fanse3 = "1.fanse3";//agvr[2];
+	/*if (agvc != 3)
 	{
 		cout << "输入了多余的参数";
 		exit(EXIT_FAILURE);
-	}
+	}*/
+	string logname = fanse3;
+	logname = logname.erase(logname.find('.')) + ".log";
+	ofstream log(logname);
+
 
 	vector<reflat> line;
-	read_reflat(arga, line);
-	fill_rc(argb, line);//算readcount
+	read_reflat(gff, line);
+	sort(line.begin(), line.end(), cmp_Start);
+	int unquant=fill_rc(fanse3, line,log);//算readcount
+
 	int total_rc = 0;
 	for (int i = 0; i < line.size(); i++)//算总readcount
 		total_rc += line[i].readcount;
+
+	log << "在 " << total_rc + unquant << " 条reads中有 " << unquant << " 条reads无法被定量，占比为：" << double(unquant) / (total_rc + unquant) * 100 << "%\n";
+
 	for (int i = 0; i < line.size(); i++)//算rpkm
 		line[i].rpkm = line[i].readcount / (total_rc / million*line[i].length / 1000);
+
 	//打印定量结果
-	sort(line.begin(), line.end(), cmp_Start);
-	string outname1 = argb;
+	string outname1 = fanse3;
 	outname1 = outname1.erase(outname1.size() - 7) + "-rpkm.txt";
 	ofstream fout1(outname1);
 	cout << "outputing the file..." << endl;
@@ -60,7 +69,10 @@ int main(int agvc, char *agvr[])//将mian（）改造成接受命令行参数的形式，两个参数
 	{
 		fout1 << line[i].gname << "	" << line[i].strand<< "	"<<line[i].Start<< "	"<<line[i].End<< "	"<<line[i].length << "	" << line[i].readcount << "	" << line[i].rpkm << endl;
 	}
+
+	log.close();
 	fout1.close();
+	
 	cout << "Done!";
 
 	return 0;
@@ -75,14 +87,14 @@ void read_reflat(string fname, vector<reflat>& line)
 		exit(EXIT_FAILURE);
 	}
 	cout << "reFLAT is in!" << endl;
-	char s;
+
 	for (int i = 0; i < 7; i++)
 	{
-		while (cin.get() == '\n')
-			break;
+		while (fin1.get() != '\n')
+			continue;
 	}
 	string waste;
-	reflat temp;
+	reflat temp = {"","","",0,0,0,0,0,'.'};
 	while (fin1 >> waste) {//循环读入，只留取第三行为 gene 字段的行的信息
 		fin1 >> waste;
 		fin1 >> waste;
@@ -105,11 +117,13 @@ void read_reflat(string fname, vector<reflat>& line)
 		pos = waste.find("gene_biotype=");
 		for (int i = pos + string("gene_biotype=").length(); waste[i] != ';'; i++)
 			temp.gtype += waste[i];
+		temp.length = temp.End - temp.Start;
 		line.push_back(temp);
+		temp = { "","","",0,0,0,0,0,'.' };
 	}
 }
 
-void fill_rc(string fanse3, vector<reflat>& line)
+int fill_rc(string fanse3, vector<reflat>& line,ofstream& log)
 {
 	ifstream fin2(fanse3);
 	if (!fin2.is_open())
@@ -118,8 +132,10 @@ void fill_rc(string fanse3, vector<reflat>& line)
 		exit(EXIT_FAILURE);
 	}
 	cout << "fanse3 is in!" << endl;
+
 	string waste;
-	string id;
+	int id;
+	int unquant = 0;//计算无法定量的reads数
 
 	char test;
 	while (fin2.get(test))
@@ -128,25 +144,28 @@ void fill_rc(string fanse3, vector<reflat>& line)
 		getline(fin2, waste);
 		if (waste[0] =='\0')
 			break;
-		fin2 >> waste;
+		fin2 >> waste>>waste>>waste;
 		fin2 >> id;
 		getline(fin2, waste);
 
-		if (id == "")
-			break;
 		int end = line.size() - 1, front = 0, mid = (front + end) / 2;
-		while (front < end&&line[mid].gname != id)//二分法找nm号
+		while (end-front>1&&line[mid].Start != id)//二分法找nm号
 		{
-			if (line[mid].gname< id)
-				front = mid + 1;
-			else if (line[mid].gname> id)
-				end = mid - 1;
+			if (line[mid].Start< id)
+				front = mid;
+			else if (line[mid].Start> id)
+				end = mid;
 			mid = (front + end) / 2;
 		}
-		if (line[mid].gname== id)
+		if (line[mid].Start <= id&&id<=line[mid].End)
 			line[mid].readcount += 1;
-		else if
-	}1
+		else
+		{
+			unquant++;
+			//log << "有read无法定量到注释文件中，其位点为：" << id <<"离它最近的基因是:"<<line[mid].gname << "其起始位点为：" << line[mid].Start << "终止位点为："<<line[mid].End << endl;
+		}
+	}
+	return unquant;
 }
 
 
