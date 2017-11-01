@@ -20,19 +20,19 @@ struct reflat
 	double rpkm = 0.0;
 	char strand = '.';
 };
-bool cmp_Start(const reflat &a, const reflat&b)
+bool cmp_Gname(const reflat &a, const reflat&b)
 {
-	return a.Start < b.Start;
+	return a.gname < b.gname;
 }
 
 void read_reflat(string fname, vector<reflat>& line);
 int fill_rc(string fanse3, vector<reflat>& line,ofstream& log);
 
 
-int main()//int agvc, char *agvr[])//½«mian£¨£©¸ÄÔì³É½ÓÊÜÃüÁîĞĞ²ÎÊıµÄĞÎÊ½£¬Á½¸ö²ÎÊı£¬µÚÒ»¸öÎªreflatÎÄ¼şµØÖ·£¬µÚ¶ş¸öÎªfanse3ÎÄ¼şµØÖ·
+int main(int agvc, char *agvr[])//½«mian£¨£©¸ÄÔì³É½ÓÊÜÃüÁîĞĞ²ÎÊıµÄĞÎÊ½£¬Á½¸ö²ÎÊı£¬µÚÒ»¸öÎªreflatÎÄ¼şµØÖ·£¬µÚ¶ş¸öÎªfanse3ÎÄ¼şµØÖ·
 {
-	string gff = "GCF_000005845.2_ASM584v2_genomic.gff";//agvr[1];
-	string fanse3 = "1.fanse3";//agvr[2];
+	string gff = agvr[1];
+	string fanse3 = agvr[2];
 	/*if (agvc != 3)
 	{
 		cout << "ÊäÈëÁË¶àÓàµÄ²ÎÊı";
@@ -45,7 +45,7 @@ int main()//int agvc, char *agvr[])//½«mian£¨£©¸ÄÔì³É½ÓÊÜÃüÁîĞĞ²ÎÊıµÄĞÎÊ½£¬Á½¸ö²
 
 	vector<reflat> line;
 	read_reflat(gff, line);
-	sort(line.begin(), line.end(), cmp_Start);
+	sort(line.begin(), line.end(), cmp_Gname);
 	int unquant=fill_rc(fanse3, line,log);//Ëãreadcount
 
 	int total_rc = 0;
@@ -63,11 +63,11 @@ int main()//int agvc, char *agvr[])//½«mian£¨£©¸ÄÔì³É½ÓÊÜÃüÁîĞĞ²ÎÊıµÄĞÎÊ½£¬Á½¸ö²
 	ofstream fout1(outname1);
 	cout << "outputing the file..." << endl;
 	fout1.precision(7);
-	fout1 << "GeneName" <<"	" <<"Strand" <<"	"<< "Start" <<"	"<< "End"<<"	"<< "Length"
+	fout1 << "GeneName\t" <<"Gene ID\t"<<"Gene Type"<<"	" <<"Strand" <<"	"<< "Start" <<"	"<< "End"<<"	"<< "Length"
 		<< "	" << "Read count" << "	" << "rpkM" << endl;
 	for (int i = 0; i < line.size(); i++)
 	{
-		fout1 << line[i].gname << "	" << line[i].strand<< "	"<<line[i].Start<< "	"<<line[i].End<< "	"<<line[i].length << "	" << line[i].readcount << "	" << line[i].rpkm << endl;
+		fout1 << line[i].gname << "	" <<line[i].gid<<'\t'<<line[i].gtype<<'\t'<< line[i].strand<< "	"<<line[i].Start<< "	"<<line[i].End<< "	"<<line[i].length << "	" << line[i].readcount << "	" << line[i].rpkm << endl;
 	}
 
 	log.close();
@@ -117,7 +117,7 @@ void read_reflat(string fname, vector<reflat>& line)
 		pos = waste.find("gene_biotype=");
 		for (int i = pos + string("gene_biotype=").length(); waste[i] != ';'; i++)
 			temp.gtype += waste[i];
-		temp.length = temp.End - temp.Start;
+		temp.length = temp.End - temp.Start+1;
 		line.push_back(temp);
 		temp = { "","","",0,0,0,0,0,'.' };
 	}
@@ -134,7 +134,7 @@ int fill_rc(string fanse3, vector<reflat>& line,ofstream& log)
 	cout << "fanse3 is in!" << endl;
 
 	string waste;
-	int id;
+	string id;
 	int unquant = 0;//¼ÆËãÎŞ·¨¶¨Á¿µÄreadsÊı
 
 	char test;
@@ -149,20 +149,20 @@ int fill_rc(string fanse3, vector<reflat>& line,ofstream& log)
 		getline(fin2, waste);
 
 		int end = line.size() - 1, front = 0, mid = (front + end) / 2;
-		while (end-front>1&&line[mid].Start != id)//¶ş·Ö·¨ÕÒnmºÅ
+		while (end-front>1&&line[mid].gname != id)//¶ş·Ö·¨ÕÒnmºÅ
 		{
-			if (line[mid].Start< id)
+			if (line[mid].gname< id)
 				front = mid;
-			else if (line[mid].Start> id)
+			else if (line[mid].gname> id)
 				end = mid;
 			mid = (front + end) / 2;
 		}
-		if (line[mid].Start <= id&&id<=line[mid].End)
+		if (line[mid].gname == id)
 			line[mid].readcount += 1;
 		else
 		{
 			unquant++;
-			//log << "ÓĞreadÎŞ·¨¶¨Á¿µ½×¢ÊÍÎÄ¼şÖĞ£¬ÆäÎ»µãÎª£º" << id <<"ÀëËü×î½üµÄ»ùÒòÊÇ:"<<line[mid].gname << "ÆäÆğÊ¼Î»µãÎª£º" << line[mid].Start << "ÖÕÖ¹Î»µãÎª£º"<<line[mid].End << endl;
+			log << "ÓĞreadÎŞ·¨¶¨Á¿µ½×¢ÊÍÎÄ¼şÖĞ£¬ÆäÎ»µãÎª£º" << id <<"ÀëËü×î½üµÄ»ùÒòÊÇ:"<<line[mid].gname << "ÆäÆğÊ¼Î»µãÎª£º" << line[mid].Start << "ÖÕÖ¹Î»µãÎª£º"<<line[mid].End << endl;
 		}
 	}
 	return unquant;
