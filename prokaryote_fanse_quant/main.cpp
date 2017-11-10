@@ -161,7 +161,7 @@ int fill_rc(string fanse3, vector<reflat>& line,ofstream& log)
 		}
 		else
 		{
-			unquant++;
+			unquant;
 			log << "有read无法定量到注释文件中，其位点为：" << id <<"离它最近的基因是:"<<line[mid].gname << "其起始位点为：" << line[mid].Start << "终止位点为："<<line[mid].End << endl;
 		}
 	}
