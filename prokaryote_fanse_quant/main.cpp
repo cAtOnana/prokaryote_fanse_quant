@@ -144,21 +144,21 @@ int fill_rc(string fanse3, vector<reflat>& line,ofstream& log)
 		getline(fin2, waste);
 		if (waste[0] =='\0')
 			break;
-		fin2 >> waste>>waste>>waste;
-		fin2 >> id;
+		fin2 >> waste>>id;
 		getline(fin2, waste);
-
 		int end = line.size() - 1, front = 0, mid = (front + end) / 2;
-		while (end-front>1&&line[mid].gname != id)//二分法找nm号
+		while (end>front&&line[mid].gname != id)//二分法找nm号
 		{
 			if (line[mid].gname< id)
-				front = mid;
+				front = mid+1;
 			else if (line[mid].gname> id)
-				end = mid;
+				end = mid-1;
 			mid = (front + end) / 2;
 		}
 		if (line[mid].gname == id)
+		{
 			line[mid].readcount += 1;
+		}
 		else
 		{
 			unquant++;
